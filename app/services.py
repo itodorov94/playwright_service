@@ -2,8 +2,11 @@
 import os
 from sqlalchemy.future import select
 from sqlalchemy.orm import Session
+
 from .models import Screenshot
 from .config import SCREENSHOTS_DIR, SessionLocal
+from playwright.sync_api import sync_playwright
+
 
 def get_screenshot_urls(id: str):
     with SessionLocal() as session:
@@ -26,8 +29,6 @@ def save_screenshots(id: str, urls: list):
             session.rollback()
 
 def crawl_and_capture_screenshots(start_url: str, number_of_links: int, id: str) -> list:
-    from playwright.sync_api import sync_playwright
-
     with sync_playwright() as p:
         browser = p.chromium.launch()
         page = browser.new_page()
