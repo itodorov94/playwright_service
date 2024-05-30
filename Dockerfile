@@ -4,22 +4,29 @@ FROM python:3.10-slim
 # Set the working directory in the container
 WORKDIR /app
 
-# Copy the current directory contents into the container at /app
-COPY . /app
-
 # Install poetry
-RUN pip install poetry
+# Install system dependencies for playwright separately to avoid reinstalling every time dependencies change
+RUN pip install poetry && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+        libglib2.0-0 libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdbus-1-3 \
+        libxkbcommon0 libxdamage1 libxcomposite1 libxrandr2 libgbm1 libpango-1.0-0 libcairo2 \
+        libasound2 libxshmfence1 && \
+    rm -rf /var/lib/apt/lists/*
 
-# Install dependencies
-RUN poetry install
+# Copy only poetry.lock and pyproject.toml to install dependencies
+COPY pyproject.toml poetry.lock ./
 
-RUN poetry run playwright install-deps && poetry run playwright install
+# Install Python dependencies
+RUN poetry config virtualenvs.create false && \
+    poetry install --no-interaction --no-ansi
+
+# Install playwright specific dependencies
+RUN poetry run playwright install-deps && \
+    poetry run playwright install
+
+# Copy the current directory contents into the container at /app
+COPY . .
 
 # Expose port 8000 for the FastAPI app
 EXPOSE 8000
-
-# Expose port 5555 for Flower
-EXPOSE 5555
-
-# Run the command to start the FastAPI app
-CMD ["poetry", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
